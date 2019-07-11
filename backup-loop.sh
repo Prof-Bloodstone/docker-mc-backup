@@ -12,6 +12,9 @@ log() {
   echo "$(date -Iseconds) ${level} $*"
 }
 
+find_old_backups() {
+  find "${DEST_DIR}" -mtime "+${PRUNE_BACKUPS_DAYS}" "${@}"
+}
 
 backupSet="${BACKUP_SET:-}"
 # shellcheck disable=SC2089
@@ -45,7 +48,7 @@ esac
 : "${LEVEL:=world}"
 
 log INFO "waiting initial delay of ${INITIAL_DELAY} seconds..."
-sleep ${INITIAL_DELAY}
+sleep "$(( INITIAL_DELAY ))"
 
 backupSet="${backupSet} ${LEVEL}"
 backupSet="${backupSet} $(find . -maxdepth 1 -name '*.properties' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' -o -name '*.txt')"
@@ -59,14 +62,6 @@ while true; do
   rcon-cli save-on >& /dev/null && break
   sleep 10
 done
-
-old_backup_find_command=(
-  find
-  "${DEST_DIR}"
-  -mtime
-  "+${PRUNE_BACKUPS_DAYS}"
-  -print
-  )
 
 while true; do
   ts=$(date -u +"%Y%m%d-%H%M%S")
@@ -89,11 +84,11 @@ while true; do
     log ERROR "rcon save-off command failed"
   fi
 
-  if (( PRUNE_BACKUPS_DAYS > 0 )) && [ -n "$("${old_backup_find_command[@]}" -quit)" ]; then
+  if (( PRUNE_BACKUPS_DAYS > 0 )) && [ -n "$(find_old_backups -print -quit)" ]; then
     log INFO "pruning backup files older than ${PRUNE_BACKUPS_DAYS} days"
-    "${old_backup_find_command[@]}" -delete
+    find_old_backups -print -delete
   fi
 
   log INFO "sleeping ${INTERVAL_SEC} seconds..."
-  sleep ${INTERVAL_SEC}
+  sleep "$(( INTERVAL_SEC ))"
 done
