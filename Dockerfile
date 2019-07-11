@@ -22,16 +22,5 @@ ENTRYPOINT ["/opt/backup-loop.sh"]
 
 VOLUME ["/data", "/backups"]
 
-ENV SRC_DIR=/data \
-    DEST_DIR=/backups \
-    BACKUP_NAME=world \
-    INITIAL_DELAY=120 \
-    INTERVAL_SEC=86400 \
-    PRUNE_BACKUPS_DAYS=7 \
-    TYPE=VANILLA \
-    LEVEL=world \
-    RCON_PORT=25575 \
-    RCON_PASSWORD=minecraft
-
 COPY backup-loop.sh /opt/
 
