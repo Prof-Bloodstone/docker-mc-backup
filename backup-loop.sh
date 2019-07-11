@@ -12,6 +12,7 @@ log() {
   echo "$(date -Iseconds) ${level} $*"
 }
 
+
 backupSet="${BACKUP_SET:-}"
 # shellcheck disable=SC2089
 excludes="${EXCLUDES:-"--exclude '*.jar'"}"
@@ -59,6 +60,14 @@ while true; do
   sleep 10
 done
 
+old_backup_find_command=(
+  find
+  "${DEST_DIR}"
+  -mtime
+  "+${PRUNE_BACKUPS_DAYS}"
+  -print
+  )
+
 while true; do
   ts=$(date -u +"%Y%m%d-%H%M%S")
 
@@ -75,15 +84,14 @@ while true; do
       fi
 
     fi
-
     rcon-cli save-on
   else
     log ERROR "rcon save-off command failed"
   fi
 
-  if (( PRUNE_BACKUPS_DAYS > 0 )); then
+  if (( PRUNE_BACKUPS_DAYS > 0 )) && [ -n "$("${old_backup_find_command[@]}" -quit)" ]; then
     log INFO "pruning backup files older than ${PRUNE_BACKUPS_DAYS} days"
-    find "${DEST_DIR}" -mtime "+${PRUNE_BACKUPS_DAYS}" -delete
+    "${old_backup_find_command[@]}" -delete
   fi
 
   log INFO "sleeping ${INTERVAL_SEC} seconds..."
