@@ -1,6 +1,8 @@
 FROM alpine
 
-RUN apk -U add unzip bash
+RUN apk -U --no-cache add \
+    unzip \
+    bash
 
 ARG RCLONE_VERSION=1.46
 ARG RCON_CLI_VERSION=1.4.4
@@ -18,7 +20,9 @@ RUN mkdir -p /opt/rcon-cli && \
     ln -s /opt/rcon-cli/rcon-cli /usr/bin && \
     rm /tmp/rcon-cli.tgz
 
-ENTRYPOINT ["/opt/backup-loop.sh"]
+ENTRYPOINT ["/bin/bash"]
+
+CMD ["/opt/backup-loop.sh"]
 
 VOLUME ["/data", "/backups"]
 

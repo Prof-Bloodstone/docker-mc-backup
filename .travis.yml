@@ -1,0 +1,53 @@
+services:
+  - docker
+
+jobs:
+  include:
+    - stage: Lint source files
+      name: Lint script with shellcheck
+      script:
+        - "readarray -t shell_scripts < <(find * -name '*.sh' -a ! -path '*/.git/*')"
+        - echo checking "${shell_scripts[@]}"
+        - shellcheck "${shell_scripts[@]}"
+    - name: Lint dockerfile
+      # DL3006 Always tag the version of an image explicitly
+      # DL3018 Pin versions in apk add. Instead of `apk add <package>` use `apk add <package>=<version>`
+      script: "docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --ignore DL3006 - < Dockerfile"
+    - stage: Run tests
+      name: Test simple backup and exclusion scenario
+      before_install:
+        - sudo apt-get update
+        - sudo apt-get install -y
+          tree
+      env:
+        SRC_DIR: /tmp/source
+        DEST_DIR: /tmp/dest
+        EXTRACT_DIR: /tmp/extract
+        INTERVAL_SEC: 0
+        INITIAL_DELAY: 5s
+        EXCLUDES: '*.jar,exclude_dir'
+        RCON_PATH: /usr/bin/rcon-cli
+      script:
+        - mkdir -p "${SRC_DIR}/"{in,ex}clude_dir "${DEST_DIR}" "${EXTRACT_DIR}"
+        - touch "${SRC_DIR}/"{backup_me.{1,2}.json,exclude_me.jar}
+        - touch "${SRC_DIR}/include_dir/"{backup_me.{1,2}.json,exclude_me.jar}
+        - touch "${SRC_DIR}/exclude_dir/"exclude_me.{1,2}.{json,jar}
+        - tree "${SRC_DIR}"
+        - docker build -t testimg .
+        - echo "true" > rcon-cli && chmod +x rcon-cli
+        - timeout 50 docker run --rm 
+          --env SRC_DIR
+          --env DEST_DIR
+          --env INTERVAL_SEC
+          --env INITIAL_DELAY
+          --env EXCLUDES
+          --mount "type=bind,src=${SRC_DIR},dst=${SRC_DIR}"
+          --mount "type=bind,src=${DEST_DIR},dst=${DEST_DIR}"
+          --mount "type=bind,src=$(pwd)/rcon-cli,dst=${RCON_PATH}"
+          testimg
+        - tree "${DEST_DIR}"
+        - tar -xzf "${DEST_DIR}/"*.tgz -C "${EXTRACT_DIR}"
+        - tree "${EXTRACT_DIR}"
+        - '[ -z "$(find "${EXTRACT_DIR}" -name "exclude_*" -print -quit)" ]'
+        - '[ 4 -eq "$(find "${EXTRACT_DIR}" -name "backup_me*" -print | wc -l)" ]'
+
