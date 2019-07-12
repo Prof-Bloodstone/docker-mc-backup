@@ -37,8 +37,8 @@ find_old_backups() {
 : "${SRC_DIR:=/data}"
 : "${DEST_DIR:=/backups}"
 : "${BACKUP_NAME:=world}"
-: "${INITIAL_DELAY:=2*60}" # 2*60 seconds = 2 minutes
-: "${INTERVAL_SEC:=24*60*60}" # 24*60*60 = 24 hours
+: "${INITIAL_DELAY:=2m}"
+: "${INTERVAL_SEC:=24h}"
 : "${PRUNE_BACKUPS_DAYS:=7}"
 : "${TYPE:=VANILLA}" # unused
 : "${RCON_PORT:=25575}"
@@ -59,8 +59,9 @@ if [ -d "${ftb_dir}" ]; then
   SRC_DIR="${ftb_dir}"
 fi
 
-log INFO "waiting initial delay of ${INITIAL_DELAY} seconds..."
-sleep "$(( INITIAL_DELAY ))"
+log INFO "waiting initial delay of ${INITIAL_DELAY}..."
+# shellcheck disable=SC2086
+sleep ${INITIAL_DELAY}
 
 log INFO "waiting for rcon readiness..."
 while true; do
@@ -96,7 +97,12 @@ while true; do
     log INFO "pruning backup files older than ${PRUNE_BACKUPS_DAYS} days"
     find_old_backups -print -delete | poc_log INFO
   fi
-
-  log INFO "sleeping ${INTERVAL_SEC} seconds..."
-  sleep "$(( INTERVAL_SEC ))"
+  
+  if (( INTERVAL_SEC > 0 )); then
+    log INFO "sleeping ${INTERVAL_SEC}..."
+    # shellcheck disable=SC2086
+    sleep ${INTERVAL_SEC}
+  else
+    break
+  fi
 done
