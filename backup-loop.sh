@@ -2,12 +2,6 @@
 
 set -eu
 
-set -x # TODO: REMOVE ME!
-# TODO: REMOVE ME!!!
-rcon-cli() {
-  true
-}
-
 poc_log() {
   if [ "$#" -lt 1 ]; then
     echo "Wrong number of arguments passed to poc_log function" >&2
@@ -97,12 +91,14 @@ while true; do
     log INFO "pruning backup files older than ${PRUNE_BACKUPS_DAYS} days"
     find_old_backups -print -delete | poc_log INFO
   fi
-  
-  if (( INTERVAL_SEC > 0 )); then
+ 
+  # If INTERVAL_SEC is not aa valid number (i.e. 24h), we want to sleep.
+  # Only raw numeric value <= 0 will break
+  if (( INTERVAL_SEC <= 0 )); then
+    break
+  else
     log INFO "sleeping ${INTERVAL_SEC}..."
     # shellcheck disable=SC2086
     sleep ${INTERVAL_SEC}
-  else
-    break
   fi
 done
